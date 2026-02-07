@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kards Deck Images Downloader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #aed1decb;
+            color: #e6e6e6;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #33334d;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #4d94ff;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        
+        .subtitle {
+            color: #a6a6c9;
+            font-size: 1.1rem;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        
+        .input-section {
+            flex: 1;
+            min-width: 300px;
+            background-color: #050505;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .output-section {
+            flex: 2; /* Output section takes more space now */
+            min-width: 300px;
+            background-color: #050505;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        h2 {
+            color: #66b3ff;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #33334d;
+            font-size: 1.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        textarea {
+            width: 100%;
+            flex-grow: 1;
+            min-height: 300px;
+            background-color: #1c1c3a;
+            color: #e6e6e6;
+            border: 1px solid #33334d;
+            border-radius: 5px;
+            padding: 15px;
+            font-size: 1rem;
+            resize: vertical;
+            font-family: monospace;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #4d94ff;
+            box-shadow: 0 0 0 2px rgba(77, 148, 255, 0.2);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background-color: #4d94ff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        button:hover {
+            background-color: #3377e6;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        button#clearBtn {
+            background-color: #ff6666;
+        }
+        
+        button#clearBtn:hover {
+            background-color: #e65555;
+        }
+        
+        button#downloadAllBtn {
+            background-color: #ff9900;
+            font-size: 0.9rem;
+            padding: 8px 16px;
+            flex: initial; /* Don't stretch */
+            min-width: auto;
+        }
+
+        button#downloadAllBtn:hover {
+            background-color: #e68a00;
+        }
+        
+        #cardList {
+            background-color: #1c1c3a;
+            border-radius: 5px;
+            padding: 20px;
+            min-height: 400px;
+            border: 1px solid #33334d;
+            overflow-y: auto;
+            max-height: 800px;
+        }
+
+        /* Grid Layout for Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .card-item {
+            background-color: #252545;
+            border: 1px solid #33334d;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            border-color: #4d94ff;
+        }
+
+        .card-preview {
+            width: 100%;
+            aspect-ratio: 250 / 356; /* KARDS card ratio approx */
+            background-color: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.3s;
+        }
+
+        .card-preview .placeholder {
+            color: #555;
+            font-size: 2rem;
+        }
+
+        .card-info {
+            padding: 10px;
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card-name {
+            font-size: 0.9rem;
+            color: #fff;
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+
+        .card-action {
+            margin-top: auto;
+        }
+
+        .download-link {
+            display: inline-block;
+            background-color: #4d94ff;
+            color: white;
+            text-decoration: none;
+            padding: 5px 15px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+            width: 100%;
+        }
+
+        .download-link:hover {
+            background-color: #3377e6;
+        }
+        
+        .output-info {
+            margin-top: 15px;
+            color: #a6a6c9;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .highlight {
+            color: #4dffb8;
+            font-weight: bold;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #333;
+            border-top: 5px solid #4d94ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .instructions {
+            background-color: #252545;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .instructions h3 {
+            color: #66b3ff;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        
+        .instructions code {
+            background-color: #1c1c3a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #4dffb8;
+        }
+        
+        .transform-rule {
+            background-color: #1c1c3a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            border-left: 4px solid #4dffb8;
+        }
+        
+        .transform-rule p {
+            margin-bottom: 8px;
+        }
+        
+        .example {
+            color: #4dffb8;
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #33334d;
+            color: #a6a6c9;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Kards Deck Images Downloader</h1>
+            <p class="subtitle"></p>
+        </header>
+        
+        <div class="main-content">
+            <section class="input-section">
+                <h2>Your Deck</h2>
+                <textarea id="deckInput" placeholder="Copy your deck here..."></textarea>
+                
+                <div class="button-group">
+                    <button id="convertBtn">Convert Deck</button>
+                    <button id="clearBtn">Clear Text</button>
+                </div>
+            </section>
+            
+            <section class="output-section">
+                <h2>
+                    Conversion Result
+                    <button id="downloadAllBtn" style="display:none;">Download All (ZIP)</button>
+                </h2>
+                <div id="cardList">Converted cards will be shown here...</div>
+                <div class="output-info">
+                    Found <span id="cardCount" class="highlight">0</span> Cards.
+                </div>
+            </section>
+        </div>
+        
+        <section class="instructions">
+            <h3>Rules</h3>
+            <ul>
+                <li>Paste KARDS deck text into the left input box</li>
+                <li>Click <strong>"Convert Deck"</strong> to generate download links.</li>
+                <li>Cards will be displayed with preview images (if available).</li>
+                <li>Click individual cards to download, or use "Download All" for a ZIP file.</li>
+            </ul>
+            
+            <div class="transform-rule">
+                <p><strong>Transformation Rules:</strong></p>
+                <p>1. Convert to lowercase</p>
+                <p>2. Convert spaces to underscores <code>_</code></p>
+                <p>3. Remove hyphens <code>-</code></p>
+                <p>4. Convert other punctuation marks in the middle to underscores <code>_</code></p>
+                <p>5. Remove punctuation marks at the end</p>
+                
+                <p style="margin-top: 10px;"><strong>Examples:</strong></p>
+                <p>"Ki-61-I-TEI" → <span class="example">ki61itei</span></p>
+                <p>"N1K-J SHIDEN" → <span class="example">n1kj_shiden</span></p>
+                <p>"10th RECON" → <span class="example">10th_recon</span></p>
+                <p>"ASW PATROL" → <span class="example">asw_patrol</span></p>
+            </div>
+            
+            <p style="margin-top: 15px;">Hint: Copy the deck in Kards and paste it here.</p>
+        </section>
+        
+        <footer>
+            <p>Kards Deck Images Downloader &copy; 2026 | Made with love.</p>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Downloading and Zipping...</div>
+        <div id="loadingProgress" style="color: #aaa; margin-top: 10px;">0%</div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const deckInput = document.getElementById('deckInput');
+        const cardList = document.getElementById('cardList');
+        const cardCount = document.getElementById('cardCount');
+        const convertBtn = document.getElementById('convertBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingProgress = document.getElementById('loadingProgress');
+        
+        // Store current cards
+        let currentCards = [];
+
+        // Normalize card name function
+        function normalizeCardName(name) {
+            // 1. Convert to lowercase
+            let normalized = name.toLowerCase();
+            
+            // 2. Remove hyphens
+            normalized = normalized.replace(/-/g, '');
+            
+            // 3. Handle other punctuation and spaces
+            const toUnderscore = /[\s~`!@#$%^&*()+\-=\[\]{};':"\\|,.<>\/?]+/g;
+            normalized = normalized.replace(toUnderscore, '_');
+            
+            // 4. Handle consecutive underscores
+            normalized = normalized.replace(/_+/g, '_');
+            
+            // 5. Remove leading and trailing underscores
+            normalized = normalized.replace(/^_+|_+$/g, '');
+            
+            return normalized;
+        }
+        
+        // Generate Image URL
+        function getImageUrl(normalizedName) {
+            return `https://shadow.jyz.de5.net/image/https://www.kards.com/images/card/v46/zh-Hans/${normalizedName}.avif`;
+        }
+
+        // Convert deck function
+        function convertDeck() {
+            const text = deckInput.value;
+            if (!text.trim()) {
+                cardList.textContent = "Please enter deck text";
+                cardList.classList.remove('card-grid');
+                cardCount.textContent = "0";
+                downloadAllBtn.style.display = 'none';
+                currentCards = [];
+                return;
+            }
+            
+            // Use regex to match card lines
+            const cardPattern = /\d+x\s*\(\d+K\)\s+([^]+?)(?=\n|$)/g;
+            const matches = text.matchAll(cardPattern);
+            
+            const cards = [];
+            const processedNames = new Set(); // Avoid duplicates if they appear multiple times
+
+            for (const match of matches) {
+                const originalName = match[1].trim();
+                const normalizedName = normalizeCardName(originalName);
+                
+                if (!processedNames.has(normalizedName)) {
+                    cards.push({
+                        original: originalName,
+                        normalized: normalizedName,
+                        url: getImageUrl(normalizedName)
+                    });
+                    processedNames.add(normalizedName);
+                }
+            }
+            
+            currentCards = cards;
+            renderCards(cards);
+        }
+
+        // Render cards to DOM
+        function renderCards(cards) {
+            cardList.innerHTML = '';
+            
+            if (cards.length === 0) {
+                cardList.textContent = "Deck Not Found";
+                cardList.classList.remove('card-grid');
+                downloadAllBtn.style.display = 'none';
+                cardCount.textContent = "0";
+                return;
+            }
+
+            cardList.classList.add('card-grid');
+            
+            cards.forEach(card => {
+                const cardItem = document.createElement('div');
+                cardItem.className = 'card-item';
+                
+                // Create image element with fallback
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'card-preview';
+                
+                const img = document.createElement('img');
+                img.src = card.url;
+                img.alt = card.original;
+                img.loading = "lazy";
+                
+                // Handle load error
+                img.onerror = () => {
+                    img.style.display = 'none';
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'placeholder';
+                    placeholder.textContent = '?';
+                    imgContainer.appendChild(placeholder);
+                };
+
+                imgContainer.appendChild(img);
+                
+                const info = document.createElement('div');
+                info.className = 'card-info';
+                
+                const name = document.createElement('div');
+                name.className = 'card-name';
+                name.textContent = card.original;
+                
+                const action = document.createElement('div');
+                action.className = 'card-action';
+                
+                const link = document.createElement('a');
+                link.href = card.url;
+                link.className = 'download-link';
+                link.textContent = 'Download';
+                link.target = '_blank';
+                // Note: 'download' attribute only works for same-origin or blob/data URLs usually
+                link.setAttribute('download', `${card.normalized}.avif`);
+                
+                action.appendChild(link);
+                info.appendChild(name);
+                info.appendChild(action);
+                
+                cardItem.appendChild(imgContainer);
+                cardItem.appendChild(info);
+                
+                cardList.appendChild(cardItem);
+            });
+
+            cardCount.textContent = cards.length;
+            downloadAllBtn.style.display = 'inline-block';
+        }
+        
+        // Download all function
+        async function downloadAll() {
+            if (currentCards.length === 0) return;
+
+            loadingOverlay.style.display = 'flex';
+            loadingProgress.textContent = `Preparing...`;
+
+            const zip = new JSZip();
+            const folder = zip.folder("kards_images");
+            
+            let successCount = 0;
+            let failCount = 0;
+            const total = currentCards.length;
+
+            // Fetch images in batches to avoid overwhelming the browser/network
+            const batchSize = 5;
+            for (let i = 0; i < total; i += batchSize) {
+                const batch = currentCards.slice(i, i + batchSize);
+                const promises = batch.map(async (card) => {
+                    try {
+                        const response = await fetch(card.url);
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        const blob = await response.blob();
+                        folder.file(`${card.normalized}.avif`, blob);
+                        successCount++;
+                    } catch (err) {
+                        console.error(`Failed to download ${card.original}:`, err);
+                        failCount++;
+                        // Create a text file for failed download
+                        folder.file(`FAILED_${card.normalized}.txt`, `Failed to download: ${card.url}\nError: ${err.message}`);
+                    } finally {
+                        loadingProgress.textContent = `Downloaded ${successCount + failCount} / ${total}`;
+                    }
+                });
+                
+                await Promise.all(promises);
+            }
+
+            loadingProgress.textContent = `Zipping files...`;
+
+            try {
+                const content = await zip.generateAsync({ type: "blob" });
+                saveAs(content, "kards_deck_images.zip");
+            } catch (err) {
+                alert("Failed to generate ZIP file: " + err.message);
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+        
+        // Clear input
+        function clearInput() {
+            deckInput.value = "";
+            cardList.innerHTML = "Converted cards will be shown here...";
+            cardList.classList.remove('card-grid');
+            cardCount.textContent = "0";
+            downloadAllBtn.style.display = 'none';
+            currentCards = [];
+        }
+        
+        // Initialize event listeners
+        convertBtn.addEventListener('click', convertDeck);
+        clearBtn.addEventListener('click', clearInput);
+        downloadAllBtn.addEventListener('click', downloadAll);
+    </script>
+</body>
+</html>
